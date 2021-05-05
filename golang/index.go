@@ -3,15 +3,15 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"github.com/gorilla/websocket"
 	"io/ioutil"
-	"strings"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
-	tls "github.com/refraction-networking/utls"
-	// JA3 "github.com/CUCyber/ja3transport"
+	"strings"
+
+	JA3 "github.com/CUCyber/ja3transport"
+	"github.com/gorilla/websocket"
 )
 
 type myTLSRequest struct {
@@ -79,35 +79,19 @@ func main() {
 			continue
 		}
 
-		config := &tls.Config{
-			InsecureSkipVerify: true,
-		}
-
 		var transport http.RoundTripper
+
+		tr, _ := JA3.NewTransport(string(mytlsrequest.Options.Ja3))
+		if err != nil {
+			log.Print(mytlsrequest.RequestID + "Request_Id_On_The_Left" + err.Error())
+			continue
+		}
+		transport = tr
 
 		rawProxy := mytlsrequest.Options.Proxy
 		if rawProxy != "" {
 			proxyURL, _ := url.Parse(rawProxy)
-			proxy, err := FromURL(proxyURL, Direct)
-			if err != nil {
-				log.Print(mytlsrequest.RequestID + "Request_Id_On_The_Left" + err.Error())
-				continue
-			}
-
-			tr, err := NewTransportWithDialer(string(mytlsrequest.Options.Ja3), config, proxy)
-			if err != nil {
-				log.Print(mytlsrequest.RequestID + "Request_Id_On_The_Left" + err.Error())
-				continue
-			}
-			transport = tr
-
-		} else {
-			tr, err := NewTransportWithConfig(string(mytlsrequest.Options.Ja3), config)
-			if err != nil {
-				log.Print(mytlsrequest.RequestID + "Request_Id_On_The_Left" + err.Error())
-				continue
-			}
-			transport = tr
+			tr.Proxy = http.ProxyURL(proxyURL)
 		}
 
 		client := &http.Client{Transport: transport}
